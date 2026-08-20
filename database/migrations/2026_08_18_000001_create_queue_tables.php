@@ -23,14 +23,19 @@ return new class extends Migration
         });
 
         // Invariante 3: 0 <= current_number <= last_issued_number.
-        // Il lato "0 <=" e' gia' garantito dalle colonne unsigned.
+        // PostgreSQL ignores the "unsigned" modifier, so the lower bounds
+        // must also be part of the database constraint.
         // SQLite (usato dai test in memoria) non supporta ADD CONSTRAINT:
         // li' l'invariante resta garantita solo dal codice.
         if (in_array(DB::getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
             DB::statement('
                 ALTER TABLE queue_days
                 ADD CONSTRAINT queue_days_current_not_ahead
-                CHECK (current_number <= last_issued_number)
+                CHECK (
+                    current_number >= 0
+                    AND last_issued_number >= 0
+                    AND current_number <= last_issued_number
+                )
             ');
         }
 
