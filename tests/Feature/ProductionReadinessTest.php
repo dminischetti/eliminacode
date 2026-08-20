@@ -26,4 +26,23 @@ class ProductionReadinessTest extends TestCase
             ->expectsOutput('FAIL  Account staff presente')
             ->assertFailed();
     }
+
+    public function test_whatsapp_attivo_richiede_credenziali_e_worker_asincrono(): void
+    {
+        User::factory()->create();
+        config([
+            'whatsapp.enabled' => true,
+            'whatsapp.business_number' => '393331234567',
+            'whatsapp.phone_number_id' => '123456789',
+            'whatsapp.access_token' => 'token',
+            'whatsapp.app_secret' => 'secret',
+            'whatsapp.verify_token' => 'verify',
+            'queue.default' => 'sync',
+        ]);
+
+        $this->artisan('coda:check')
+            ->expectsOutput('PASS  WhatsApp numero business configurato')
+            ->expectsOutput('FAIL  Worker asincrono configurato')
+            ->assertFailed();
+    }
 }

@@ -50,3 +50,124 @@ jobs:
 
       - name: Run test suite
         run: php artisan test --display-warnings
+
+  production-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: eliminacode
+          POSTGRES_USER: eliminacode
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eliminacode -d eliminacode"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_NAME: "La Baita della Sceriffa"
+      APP_ENV: production
+      APP_KEY: base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      APP_DEBUG: false
+      APP_URL: https://coda.example.com
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: eliminacode
+      DB_USERNAME: eliminacode
+      DB_PASSWORD: test-password
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: true
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      STAFF_TEST_PASSWORD: una-password-sicura
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_pgsql
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --classmap-authoritative --no-interaction --prefer-dist --no-progress
+
+      - name: Run PostgreSQL migrations
+        run: php artisan migrate --force
+
+      - name: Create the staff account non-interactively
+        run: php artisan coda:staff banco@example.com --name="Banco carni" --password-env=STAFF_TEST_PASSWORD
+
+      - name: Verify production readiness
+        run: php artisan coda:check --production
+
+  production-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: eliminacode
+          MYSQL_USER: eliminacode
+          MYSQL_PASSWORD: test-password
+          MYSQL_ROOT_PASSWORD: root-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -proot-test-password"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      APP_NAME: "La Baita della Sceriffa"
+      APP_ENV: production
+      APP_KEY: base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      APP_DEBUG: false
+      APP_URL: https://coda.example.com
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: eliminacode
+      DB_USERNAME: eliminacode
+      DB_PASSWORD: test-password
+      SESSION_DRIVER: database
+      SESSION_SECURE_COOKIE: true
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      STAFF_TEST_PASSWORD: una-password-sicura
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+
+      - name: Install production dependencies
+        run: composer install --no-dev --classmap-authoritative --no-interaction --prefer-dist --no-progress
+
+      - name: Run MySQL migrations
+        run: php artisan migrate --force
+
+      - name: Create the staff account non-interactively
+        run: php artisan coda:staff banco@example.com --name="Banco carni" --password-env=STAFF_TEST_PASSWORD
+
+      - name: Verify production readiness
+        run: php artisan coda:check --production

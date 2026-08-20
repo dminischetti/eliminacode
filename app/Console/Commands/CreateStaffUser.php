@@ -16,7 +16,10 @@ use Illuminate\Support\Str;
  */
 class CreateStaffUser extends Command
 {
-    protected $signature = 'coda:staff {email} {--name=Banco}';
+    protected $signature = 'coda:staff
+        {email : Indirizzo email dello staff}
+        {--name=Banco : Nome visualizzato}
+        {--password-env= : Variabile d\'ambiente da cui leggere la password}';
 
     protected $description = 'Crea o aggiorna l\'account staff del negozio';
 
@@ -37,8 +40,28 @@ class CreateStaffUser extends Command
             return self::FAILURE;
         }
 
-        $password = $this->secret('Password');
-        $conferma = $this->secret('Conferma password');
+        $passwordEnvironmentVariable = trim((string) $this->option('password-env'));
+
+        if ($passwordEnvironmentVariable !== '') {
+            if (preg_match('/^[A-Z][A-Z0-9_]*$/', $passwordEnvironmentVariable) !== 1) {
+                $this->error('Nome della variabile password non valido.');
+
+                return self::FAILURE;
+            }
+
+            $password = getenv($passwordEnvironmentVariable);
+
+            if ($password === false || $password === '') {
+                $this->error("La variabile {$passwordEnvironmentVariable} non contiene una password.");
+
+                return self::FAILURE;
+            }
+
+            $conferma = $password;
+        } else {
+            $password = $this->secret('Password');
+            $conferma = $this->secret('Conferma password');
+        }
 
         if ($password !== $conferma) {
             $this->error('Le due password non coincidono.');

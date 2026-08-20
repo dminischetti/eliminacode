@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#EEF1F0">
+<meta name="theme-color" content="#F3EFE5">
 <meta name="robots" content="noindex">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>Banco — {{ config('app.name') }}</title>
+<title>Banco carni — {{ config('app.name') }}</title>
 
 <style>
     :root {
-        --tile:    #EEF1F0;
-        --ink:     #16181A;
-        --steel:   #5C6470;
-        --line:    #D6DBDA;
-        --insegna: #9E1B1B;
-        --paper:   #FFFFFF;
+        --tile:    #F3EFE5;
+        --ink:     #18261E;
+        --steel:   #657068;
+        --line:    #D8D0C0;
+        --insegna: #9C352C;
+        --paper:   #FFFCF6;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -212,6 +212,13 @@
         font-weight: 600;
     }
 
+    .avviso--whatsapp {
+        border-color: #B98516;
+        color: #73510A;
+        background: #FFF5D8;
+        font-weight: 600;
+    }
+
     .nascosto { display: none; }
 </style>
 </head>
@@ -219,7 +226,7 @@
 
 <div class="schermo">
     <div class="barra">
-        <span id="intestazione">Banco</span>
+        <span id="intestazione">{{ config('app.name') }} · Banco carni</span>
         <form method="POST" action="{{ route('staff.logout') }}">
             @csrf
             <button type="submit" class="esci">Esci</button>

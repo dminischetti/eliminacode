@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\WhatsAppMessage;
 use App\Services\QueueDayService;
 use Illuminate\View\View;
 
@@ -22,7 +23,11 @@ class StaffPageController extends Controller
                 'current_number' => $day->current_number,
                 'last_issued_number' => $day->last_issued_number,
                 'has_waiting' => $day->hasWaitingNumbers(),
+                'whatsapp_failed_count' => config('whatsapp.enabled')
+                    ? WhatsAppMessage::issueCountForQueueDay($day->id)
+                    : 0,
                 'poll_seconds' => (int) config('queue_shop.staff_poll_seconds'),
+                'venue_name' => (string) config('app.name'),
             ],
         ]);
     }

@@ -3,23 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#EEF1F0">
+<meta name="theme-color" content="#F3EFE5">
 <meta name="robots" content="noindex">
+<meta name="description" content="Il tuo numero per il banco de {{ config('app.name') }}.">
 <title>{{ config('app.name') }} — Coda</title>
 
 {{--
-    Nessun font esterno e nessuna CDN, di proposito: la pagina deve aprirsi
-    sulla Wi-Fi del negozio anche quando fuori non si prende niente. La
-    personalita' viene dalla scala del numero, non da un webfont scaricato.
+    Nessun font esterno e nessuna CDN: la pagina deve aprirsi sulla Wi-Fi
+    della Baita anche quando la rete mobile a Rigopiano non prende.
 --}}
 <style>
     :root {
-        --tile:     #EEF1F0;  /* bianco freddo, come le piastrelle del banco */
-        --ink:      #16181A;
-        --steel:    #5C6470;
-        --line:     #D6DBDA;
-        --insegna:  #9E1B1B;  /* il rosso dell'insegna, usato una volta sola */
-        --paper:    #FFFFFF;
+        --tile:     #F3EFE5;
+        --ink:      #18261E;
+        --steel:    #657068;
+        --line:     #D8D0C0;
+        --bosco:    #294936;
+        --insegna:  #9C352C;
+        --paper:    #FFFCF6;
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -56,6 +57,30 @@
         gap: 0.75rem;
     }
 
+    .marchio {
+        flex: 0 0 auto;
+        text-align: center;
+        padding: 0.15rem 0 0.85rem;
+        color: var(--bosco);
+    }
+
+    .marchio__nome {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+    }
+
+    .marchio__luogo {
+        margin: 0.25rem 0 0;
+        color: var(--steel);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
     .eyebrow {
         font-size: 0.95rem;
         font-weight: 600;
@@ -88,6 +113,13 @@
         font-weight: 600;
     }
 
+    .nota {
+        max-width: 28rem;
+        margin: 0.5rem auto 0;
+        font-size: 1rem;
+        color: var(--steel);
+    }
+
     .azione {
         display: block;
         width: 100%;
@@ -114,12 +146,60 @@
         cursor: default;
     }
 
+    .azione--whatsapp {
+        margin-top: 0.75rem;
+        background: #176B43;
+    }
+
+    .consenso,
+    .esito {
+        margin: 0.55rem auto 0;
+        max-width: 32rem;
+        text-align: center;
+        color: var(--steel);
+        font-size: 0.88rem;
+    }
+
+    .esito {
+        color: var(--insegna);
+        min-height: 1.2em;
+    }
+
+    .whatsapp-stato {
+        border: 2px solid #176B43;
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+        text-align: center;
+        color: #176B43;
+        font-weight: 750;
+    }
+
     .piede {
         margin-top: 1.25rem;
         text-align: center;
         font-size: 0.9rem;
         color: var(--steel);
         min-height: 1.2em;
+    }
+
+    .piede p { margin: 0; }
+
+    .privacy {
+        margin-top: 0.45rem;
+        color: var(--steel);
+    }
+
+    .privacy summary {
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+    }
+
+    .privacy p {
+        max-width: 34rem;
+        margin: 0.45rem auto 0;
+        font-size: 0.82rem;
+        line-height: 1.45;
     }
 
     .piede--vecchio {
@@ -138,7 +218,9 @@
     }
 
     .screen--turno .eyebrow,
-    .screen--turno .riga {
+    .screen--turno .riga,
+    .screen--turno .marchio,
+    .screen--turno .marchio__luogo {
         color: rgba(255, 255, 255, 0.82);
     }
 
@@ -182,6 +264,10 @@
 <body>
 
 <div id="app" class="screen">
+    <header class="marchio">
+        <p class="marchio__nome">{{ config('app.name') }}</p>
+        <p class="marchio__luogo">{{ config('queue_shop.location') }}</p>
+    </header>
     <div class="screen__body">
         <p class="eyebrow">Ora serviamo</p>
         <p class="numero">—</p>
