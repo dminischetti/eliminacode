@@ -130,7 +130,7 @@ class QueueCoreTest extends TestCase
         $this->tickets->issue($this->key());
 
         $this->expectException(QueueException::class);
-        $this->queue->correct($this->days->today(), 5);
+        $this->queue->correct($this->days->today(), 5, 0);
     }
 
     public function test_correzione_valida_viene_applicata_e_tracciata(): void
@@ -140,13 +140,31 @@ class QueueCoreTest extends TestCase
         $this->queue->next($this->days->today(), 0);
         $this->queue->next($this->days->today(), 1);
 
-        $this->queue->correct($this->days->today(), 1);
+        $this->queue->correct($this->days->today(), 1, 2);
 
         $this->assertSame(1, $this->days->today()->current_number);
         $this->assertDatabaseHas('queue_corrections', [
             'old_current_number' => 2,
             'new_current_number' => 1,
         ]);
+    }
+
+    public function test_correzione_con_stato_vecchio_viene_rifiutata(): void
+    {
+        $this->tickets->issue($this->key());
+        $this->queue->next($this->days->today(), 0);
+
+        $this->expectException(QueueException::class);
+        $this->queue->correct($this->days->today(), 0, 0);
+    }
+
+    public function test_correzione_a_giornata_chiusa_viene_rifiutata(): void
+    {
+        $this->tickets->issue($this->key());
+        $this->days->close($this->days->today());
+
+        $this->expectException(QueueException::class);
+        $this->queue->correct($this->days->today(), 0, 0);
     }
 
     /** §15: lo stato del ticket e' derivato, non memorizzato. */

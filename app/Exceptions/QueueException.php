@@ -4,16 +4,16 @@ namespace App\Exceptions;
 
 use RuntimeException;
 
-/**
- * Un solo tipo di eccezione di dominio. Il codice HTTP suggerito e' indicato
- * accanto a ciascun costruttore: e' il controller a fare la traduzione.
- */
 class QueueException extends RuntimeException
 {
-    /** 409 - la giornata e' chiusa (§12). */
+    public function __construct(string $message, private readonly int $httpStatus)
+    {
+        parent::__construct($message);
+    }
+
     public static function closed(): self
     {
-        return new self('La coda di oggi e\' chiusa.');
+        return new self('La coda di oggi e\' chiusa.', 409);
     }
 
     /**
@@ -22,13 +22,13 @@ class QueueException extends RuntimeException
      */
     public static function staleState(): self
     {
-        return new self('La coda e\' cambiata. Aggiornamento in corso.');
+        return new self('La coda e\' cambiata. Aggiornamento in corso.', 409);
     }
 
     /** 409 - PROSSIMO a coda vuota (§43). */
     public static function noWaitingNumbers(): self
     {
-        return new self('Nessun numero in attesa.');
+        return new self('Nessun numero in attesa.', 409);
     }
 
     /** 422 - correzione fuori dai limiti (§45). */
@@ -38,6 +38,11 @@ class QueueException extends RuntimeException
             'Il numero %d e\' fuori dai limiti consentiti (0-%d).',
             $value,
             $lastIssued
-        ));
+        ), 422);
+    }
+
+    public function httpStatus(): int
+    {
+        return $this->httpStatus;
     }
 }

@@ -8,9 +8,14 @@ permissions:
   contents: read
 
 jobs:
-  phpunit:
+  quality:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
 
     steps:
       - name: Check out repository
@@ -19,15 +24,36 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ matrix.php }}
           extensions: mbstring, pdo_sqlite
           coverage: none
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Validate Composer metadata
+        run: composer validate --strict
+
+      - name: Audit Composer dependencies
+        run: composer audit
+
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check public/js/queue.js
+          node --check public/js/staff.js
+
       - name: Prepare test environment
         run: cp .env.example .env
 
       - name: Run test suite
         run: php artisan test --display-warnings
+
+      - name: Export dependency lock
+        if: matrix.php == '8.3'
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-lock
+          path: composer.lock

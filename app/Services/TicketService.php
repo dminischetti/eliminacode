@@ -33,17 +33,17 @@ class TicketService
             /** @var QueueDay $day */
             $day = QueueDay::whereKey($queueDayId)->lockForUpdate()->firstOrFail();
 
-            // La giornata puo' essere stata chiusa tra la risoluzione e il lock.
-            if (! $day->isOpen()) {
-                throw QueueException::closed();
-            }
-
             $existing = Ticket::where('queue_day_id', $day->id)
                 ->where('idempotency_key', $idempotencyKey)
                 ->first();
 
             if ($existing !== null) {
                 return $existing;
+            }
+
+            // La giornata puo' essere stata chiusa tra la risoluzione e il lock.
+            if (! $day->isOpen()) {
+                throw QueueException::closed();
             }
 
             $day->last_issued_number = $day->last_issued_number + 1;
@@ -60,7 +60,7 @@ class TicketService
 
     public function findByToken(string $publicToken): ?Ticket
     {
-        return Ticket::where('public_token', $publicToken)->first();
+        return Ticket::with('queueDay')->where('public_token', $publicToken)->first();
     }
 
     /** §25 - 128 bit, non incrementale, non derivato dal numero del ticket. */

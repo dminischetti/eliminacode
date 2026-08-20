@@ -18,6 +18,7 @@
     var elIntestazione = document.getElementById('intestazione');
 
     var inFlight = false;
+    var syncing = false;
     var offline = false;
     var messaggio = null;
     var messaggioTimer = null;
@@ -38,9 +39,13 @@
     }
 
     function chiamata(url, corpo) {
+        var controller = window.AbortController ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, 10000) : null;
+
         return fetch(url, {
             method: corpo ? 'POST' : 'GET',
             cache: 'no-store',
+            signal: controller ? controller.signal : undefined,
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -49,6 +54,11 @@
             },
             body: corpo ? JSON.stringify(corpo) : undefined
         }).then(function (r) {
+            if (timer) { clearTimeout(timer); }
+            if (r.status === 401) {
+                window.location.assign('/staff/login');
+                throw new Error('sessione');
+            }
             if (r.status === 419) {
                 /* Sessione scaduta: meglio ricaricare che fingere. */
                 window.location.reload();
@@ -57,6 +67,9 @@
             return r.json().catch(function () { return {}; }).then(function (data) {
                 return { ok: r.ok, status: r.status, data: data };
             });
+        }, function (error) {
+            if (timer) { clearTimeout(timer); }
+            throw error;
         });
     }
 
@@ -200,7 +213,10 @@
 
         inFlight = true;
 
-        chiamata('/api/staff/queue/correct', { new_current_number: nuovo })
+        chiamata('/api/staff/queue/correct', {
+            new_current_number: nuovo,
+            expected_current_number: stato.current_number
+        })
             .then(function (r) {
                 inFlight = false;
 
@@ -219,24 +235,36 @@
     }
 
     function chiudi() {
+        if (inFlight || offline) { return; }
         if (!window.confirm('Chiudere la coda di oggi?')) { return; }
 
+        inFlight = true;
+        disegna();
         chiamata('/api/staff/queue/close', {})
             .then(function (r) {
-                if (r.ok) { stato = aggiornaStato(r.data); disegna(); }
+                inFlight = false;
+                if (!r.ok) { avvisa(r.data.message || 'Operazione non riuscita.', true); return; }
+                stato = aggiornaStato(r.data);
+                disegna();
             })
-            .catch(segnalaOffline);
+            .catch(function () { inFlight = false; segnalaOffline(); });
     }
 
     function riapri() {
+        if (inFlight || offline) { return; }
+        inFlight = true;
+        disegna();
         chiamata('/api/staff/queue/reopen', {})
             .then(function (r) {
+                inFlight = false;
                 if (r.ok) {
                     stato = aggiornaStato(r.data);
                     avvisa('Coda riaperta dal numero ' + stato.current_number + '.');
+                    return;
                 }
+                avvisa(r.data.message || 'Operazione non riuscita.', true);
             })
-            .catch(segnalaOffline);
+            .catch(function () { inFlight = false; segnalaOffline(); });
     }
 
     /* ---------------------------------------------------------------- */
@@ -259,17 +287,19 @@
     }
 
     function aggiorna() {
-        if (inFlight) { return; }
+        if (inFlight || syncing) { return; }
 
+        syncing = true;
         chiamata('/api/staff/queue')
             .then(function (r) {
-                if (!r.ok) { return; }
+                syncing = false;
+                if (!r.ok) { segnalaOffline(); return; }
                 var eraOffline = offline;
                 stato = aggiornaStato(r.data);
                 if (eraOffline) { avvisa('Connessione ripristinata.'); }
                 disegna();
             })
-            .catch(segnalaOffline);
+            .catch(function () { syncing = false; segnalaOffline(); });
     }
 
     /* ---------------------------------------------------------------- */

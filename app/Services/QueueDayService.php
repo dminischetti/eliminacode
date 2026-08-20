@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\QueueDay;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class QueueDayService
 {
@@ -55,12 +56,18 @@ class QueueDayService
     /** §12 */
     public function close(QueueDay $day): QueueDay
     {
-        $day->forceFill([
-            'status' => QueueDay::STATUS_CLOSED,
-            'closed_at' => now(),
-        ])->save();
+        return DB::transaction(function () use ($day) {
+            $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();
 
-        return $day;
+            if ($locked->isOpen()) {
+                $locked->forceFill([
+                    'status' => QueueDay::STATUS_CLOSED,
+                    'closed_at' => now(),
+                ])->save();
+            }
+
+            return $locked;
+        });
     }
 
     /**
@@ -69,11 +76,17 @@ class QueueDayService
      */
     public function reopen(QueueDay $day): QueueDay
     {
-        $day->forceFill([
-            'status' => QueueDay::STATUS_OPEN,
-            'closed_at' => null,
-        ])->save();
+        return DB::transaction(function () use ($day) {
+            $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();
 
-        return $day;
+            if (! $locked->isOpen()) {
+                $locked->forceFill([
+                    'status' => QueueDay::STATUS_OPEN,
+                    'closed_at' => null,
+                ])->save();
+            }
+
+            return $locked;
+        });
     }
 }

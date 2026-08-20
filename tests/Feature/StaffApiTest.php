@@ -95,7 +95,10 @@ class StaffApiTest extends TestCase
         $this->actingAs($this->staff)->postJson('/api/staff/queue/next', ['expected_current_number' => 1]);
 
         $this->actingAs($this->staff)
-            ->postJson('/api/staff/queue/correct', ['new_current_number' => 1])
+            ->postJson('/api/staff/queue/correct', [
+                'new_current_number' => 1,
+                'expected_current_number' => 2,
+            ])
             ->assertOk()
             ->assertJsonPath('current_number', 1);
 
@@ -111,9 +114,41 @@ class StaffApiTest extends TestCase
         $this->emetti(2);
 
         $this->actingAs($this->staff)
-            ->postJson('/api/staff/queue/correct', ['new_current_number' => 9])
+            ->postJson('/api/staff/queue/correct', [
+                'new_current_number' => 9,
+                'expected_current_number' => 0,
+            ])
             ->assertStatus(422)
             ->assertJsonPath('queue.current_number', 0);
+    }
+
+    public function test_correzione_con_expected_vecchio_viene_rifiutata(): void
+    {
+        $this->emetti(2);
+        $this->actingAs($this->staff)
+            ->postJson('/api/staff/queue/next', ['expected_current_number' => 0])
+            ->assertOk();
+
+        $this->actingAs($this->staff)
+            ->postJson('/api/staff/queue/correct', [
+                'new_current_number' => 0,
+                'expected_current_number' => 0,
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('queue.current_number', 1);
+    }
+
+    public function test_correzione_a_giornata_chiusa_viene_rifiutata(): void
+    {
+        $this->emetti();
+        app(QueueDayService::class)->close(app(QueueDayService::class)->today());
+
+        $this->actingAs($this->staff)
+            ->postJson('/api/staff/queue/correct', [
+                'new_current_number' => 0,
+                'expected_current_number' => 0,
+            ])
+            ->assertStatus(409);
     }
 
     public function test_chiusura_e_riapertura_conservano_i_contatori(): void

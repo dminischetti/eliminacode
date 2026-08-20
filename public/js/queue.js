@@ -45,6 +45,7 @@
     var timer = null;
     var lastSync = null;
     var sending = false;
+    var syncing = false;
     var retryDelay = 2000;
 
     /* ---------------------------------------------------------------- */
@@ -67,6 +68,22 @@
     function esc(value) {
         return String(value === undefined || value === null ? '' : value)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function richiesta(url, options) {
+        var controller = window.AbortController ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, 15000) : null;
+        var config = options || {};
+
+        if (controller) { config.signal = controller.signal; }
+
+        return fetch(url, config).then(function (response) {
+            if (timer) { clearTimeout(timer); }
+            return response;
+        }, function (error) {
+            if (timer) { clearTimeout(timer); }
+            throw error;
+        });
     }
 
     /* Scarta pending key e ticket di una giornata precedente. */
@@ -128,12 +145,6 @@
             ? 'Manca 1 numero prima del tuo'
             : 'Mancano ' + esc(d.remaining) + ' numeri prima del tuo';
 
-        var whatsapp = d.whatsapp_enabled
-            ? (d.whatsapp_associated
-                ? '<p class="avviso">Avviso WhatsApp attivo</p>'
-                : '<button class="azione" data-whatsapp="1">AVVISAMI SU WHATSAPP</button>')
-            : '';
-
         view(
             '<div class="screen__body">' +
                 '<p class="eyebrow">Il tuo numero</p>' +
@@ -141,7 +152,6 @@
                 '<p class="riga">Stiamo servendo il ' + esc(d.current_number) + '</p>' +
                 '<p class="riga riga--forte">' + mancano + '</p>' +
             '</div>' +
-            whatsapp +
             piede()
         );
     }
@@ -226,7 +236,7 @@
         sending = true;
         schermoInvio(false);
 
-        fetch('/api/tickets', {
+        richiesta('/api/tickets', {
             method: 'POST',
             cache: 'no-store',
             headers: {
@@ -276,21 +286,26 @@
     /* ---------------------------------------------------------------- */
 
     function aggiorna() {
-        if (sending) { return; }
+        if (sending || syncing) { return; }
+
+        syncing = true;
 
         var token = store.getItem(K.token);
         var url = token
             ? '/api/tickets/' + encodeURIComponent(token) + '/status'
             : '/api/queue';
 
-        fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } })
+        richiesta(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } })
             .then(function (r) {
                 if (r.status === 404) { forgetTicket(); return null; }
                 if (!r.ok) { throw new Error('rete'); }
                 return r.json();
             })
             .then(function (d) {
-                if (!d) { return aggiorna(); }
+                if (!d) {
+                    syncing = false;
+                    return aggiorna();
+                }
 
                 lastSync = new Date();
 
@@ -302,12 +317,15 @@
                 /* Ticket di una giornata precedente: si riparte dalla home. */
                 if (d.business_date && d.today && d.business_date !== d.today) {
                     forgetTicket();
+                    syncing = false;
                     return aggiorna();
                 }
 
+                syncing = false;
                 render(d);
             })
             .catch(function () {
+                syncing = false;
                 /* Offline: si tiene l'ultimo stato noto e si segnala l'ora. */
                 var button = app.querySelector('[data-azione]');
                 if (!button && lastSync) {

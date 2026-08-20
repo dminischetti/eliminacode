@@ -54,6 +54,22 @@ class CustomerApiTest extends TestCase
         $this->assertSame(1, app(QueueDayService::class)->today()->last_issued_number);
     }
 
+    public function test_un_retry_dopo_la_chiusura_restituisce_il_ticket_originale(): void
+    {
+        $key = $this->key();
+        $first = $this->prendiNumero($key)->assertCreated();
+
+        $days = app(QueueDayService::class);
+        $days->close($days->today());
+
+        $this->prendiNumero($key)
+            ->assertOk()
+            ->assertJsonPath('public_token', $first->json('public_token'));
+
+        $this->prendiNumero()->assertStatus(409);
+        $this->assertSame(1, $days->today()->last_issued_number);
+    }
+
     public function test_senza_idempotency_key_valida_non_si_emette_nulla(): void
     {
         $this->withHeader('Idempotency-Key', 'non-una-uuid')
@@ -98,6 +114,45 @@ class CustomerApiTest extends TestCase
     public function test_token_inesistente_restituisce_404(): void
     {
         $this->getJson('/api/tickets/inesistente/status')->assertNotFound();
+    }
+
+    public function test_le_rotte_cliente_non_avviano_una_sessione_e_includono_header_sicuri(): void
+    {
+        $response = $this->get('/')->assertOk();
+
+        $response->assertCookie('coda_cid')
+            ->assertCookieMissing((string) config('session.cookie'))
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'same-origin');
+
+        $this->assertStringContainsString(
+            "frame-ancestors 'none'",
+            (string) $response->headers->get('Content-Security-Policy')
+        );
+    }
+
+    public function test_un_singolo_browser_viene_limitato_ma_un_altro_puo_continuare(): void
+    {
+        $client = bin2hex(random_bytes(16));
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->withCookie('coda_cid', $client)
+                ->withHeader('Idempotency-Key', $this->key())
+                ->postJson('/api/tickets')
+                ->assertCreated();
+        }
+
+        $this->withCookie('coda_cid', $client)
+            ->withHeader('Idempotency-Key', $this->key())
+            ->postJson('/api/tickets')
+            ->assertTooManyRequests();
+
+        $this->withCookie('coda_cid', bin2hex(random_bytes(16)))
+            ->withHeader('Idempotency-Key', $this->key())
+            ->postJson('/api/tickets')
+            ->assertCreated();
     }
 
     /** Il client scarta il ticket confrontando business_date con today. */

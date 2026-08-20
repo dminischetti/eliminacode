@@ -6,7 +6,16 @@ use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\QueuePageController;
 use App\Http\Controllers\StaffPageController;
 use App\Http\Controllers\StaffSessionController;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+
+$statelessCustomerMiddleware = [
+    StartSession::class,
+    ShareErrorsFromSession::class,
+    ValidateCsrfToken::class,
+];
 
 /*
  |--------------------------------------------------------------------------
@@ -15,15 +24,21 @@ use Illuminate\Support\Facades\Route;
  | Il middleware AttachClientId e' registrato nello stack web, prima del
  | throttle della rotta di emissione.
  */
-Route::get('/', [QueuePageController::class, 'show'])->name('queue.page');
+Route::get('/', [QueuePageController::class, 'show'])
+    ->withoutMiddleware($statelessCustomerMiddleware)
+    ->name('queue.page');
 
-Route::get('/api/queue', [QueueController::class, 'show'])->name('queue.state');
+Route::get('/api/queue', [QueueController::class, 'show'])
+    ->withoutMiddleware($statelessCustomerMiddleware)
+    ->name('queue.state');
 
 Route::post('/api/tickets', [TicketController::class, 'store'])
     ->middleware('throttle:tickets')
+    ->withoutMiddleware($statelessCustomerMiddleware)
     ->name('tickets.store');
 
 Route::get('/api/tickets/{token}/status', [TicketController::class, 'status'])
+    ->withoutMiddleware($statelessCustomerMiddleware)
     ->name('tickets.status');
 
 /*
@@ -58,22 +73,3 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/staff/queue/close', [StaffQueueController::class, 'close']);
     Route::post('/api/staff/queue/reopen', [StaffQueueController::class, 'reopen']);
 });
-
-/*
- * IMPORTANTE - escludere POST api/tickets dal CSRF.
- *
- * La pagina cliente puo' restare aperta per ore: con il token CSRF legato
- * alla sessione, un cliente che prende il numero dopo molto tempo si
- * beccherebbe un 419 al posto del suo turno. L'endpoint e' gia' protetto
- * da idempotency key e rate limiting, e non c'e' nulla di sensibile da
- * forgiare. Le rotte staff restano invece protette dal CSRF: hanno una
- * sessione autenticata e il token viaggia nel meta tag della dashboard.
- *
- * Laravel 11+ in bootstrap/app.php:
- *     ->withMiddleware(function (Middleware $middleware) {
- *         $middleware->validateCsrfTokens(except: ['api/tickets']);
- *     })
- *
- * Laravel 10 in app/Http/Middleware/VerifyCsrfToken.php:
- *     protected $except = ['api/tickets'];
- */

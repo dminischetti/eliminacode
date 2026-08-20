@@ -49,7 +49,7 @@ class StaffQueueController extends Controller
             return response()->json([
                 'message' => $e->getMessage(),
                 'queue' => $this->payload($this->queueDays->today()),
-            ], 409);
+            ], $e->httpStatus());
         }
 
         return response()->json($this->payload($day));
@@ -60,19 +60,21 @@ class StaffQueueController extends Controller
     {
         $data = $request->validate([
             'new_current_number' => ['required', 'integer', 'min:0'],
+            'expected_current_number' => ['required', 'integer', 'min:0'],
         ]);
 
         try {
             $day = $this->queue->correct(
                 $this->queueDays->today(),
                 (int) $data['new_current_number'],
+                (int) $data['expected_current_number'],
                 $request->user()?->id
             );
         } catch (QueueException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
                 'queue' => $this->payload($this->queueDays->today()),
-            ], 422);
+            ], $e->httpStatus());
         }
 
         return response()->json($this->payload($day));

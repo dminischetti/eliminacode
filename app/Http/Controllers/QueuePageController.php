@@ -29,7 +29,6 @@ class QueuePageController extends Controller
                 'queue_status' => $day->status,
                 'current_number' => $day->current_number,
                 'poll_seconds' => (int) config('queue_shop.customer_poll_seconds'),
-                'whatsapp_enabled' => (bool) config('queue_shop.whatsapp_enabled'),
             ],
         ]);
     }

@@ -46,9 +46,6 @@ return new class extends Migration
             $table->unsignedInteger('number');
             $table->string('public_token', 64);
             $table->string('idempotency_key', 64);
-            $table->string('whatsapp_recipient')->nullable();
-            $table->timestamp('whatsapp_associated_at')->nullable();
-            $table->timestamp('notification_sent_at')->nullable();
             $table->timestamps();
 
             $table->unique('public_token');

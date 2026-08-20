@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
  * Un solo account per il negozio, creato dalla riga di comando.
@@ -21,7 +22,20 @@ class CreateStaffUser extends Command
 
     public function handle(): int
     {
-        $email = (string) $this->argument('email');
+        $email = mb_strtolower(trim((string) $this->argument('email')));
+        $name = trim((string) $this->option('name'));
+
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            $this->error('Indirizzo email non valido.');
+
+            return self::FAILURE;
+        }
+
+        if ($name === '') {
+            $this->error('Il nome non puo\' essere vuoto.');
+
+            return self::FAILURE;
+        }
 
         $password = $this->secret('Password');
         $conferma = $this->secret('Conferma password');
@@ -41,8 +55,9 @@ class CreateStaffUser extends Command
         $user = User::updateOrCreate(
             ['email' => $email],
             [
-                'name' => (string) $this->option('name'),
+                'name' => $name,
                 'password' => Hash::make($password),
+                'remember_token' => Str::random(60),
             ]
         );
 
