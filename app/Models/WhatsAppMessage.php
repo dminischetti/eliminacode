@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WhatsAppMessage extends Model
 {
+    protected $table = 'whatsapp_messages';
+
     public const TYPE_APPROACHING_TURN = 'approaching_turn';
 
     public const STATUS_PENDING = 'pending';
