@@ -6,28 +6,25 @@ use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\QueuePageController;
 use App\Http\Controllers\StaffPageController;
 use App\Http\Controllers\StaffSessionController;
-use App\Http\Middleware\AttachClientId;
 use Illuminate\Support\Facades\Route;
 
 /*
  |--------------------------------------------------------------------------
  | Cliente
  |--------------------------------------------------------------------------
- | Tutto sotto il gruppo web perche' serve il cookie identificativo del
- | browser usato dal rate limiter.
+ | Il middleware AttachClientId e' registrato nello stack web, prima del
+ | throttle della rotta di emissione.
  */
-Route::middleware(AttachClientId::class)->group(function () {
-    Route::get('/', [QueuePageController::class, 'show'])->name('queue.page');
+Route::get('/', [QueuePageController::class, 'show'])->name('queue.page');
 
-    Route::get('/api/queue', [QueueController::class, 'show'])->name('queue.state');
+Route::get('/api/queue', [QueueController::class, 'show'])->name('queue.state');
 
-    Route::post('/api/tickets', [TicketController::class, 'store'])
-        ->middleware('throttle:tickets')
-        ->name('tickets.store');
+Route::post('/api/tickets', [TicketController::class, 'store'])
+    ->middleware('throttle:tickets')
+    ->name('tickets.store');
 
-    Route::get('/api/tickets/{token}/status', [TicketController::class, 'status'])
-        ->name('tickets.status');
-});
+Route::get('/api/tickets/{token}/status', [TicketController::class, 'status'])
+    ->name('tickets.status');
 
 /*
  |--------------------------------------------------------------------------
