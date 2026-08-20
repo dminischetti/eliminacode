@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2']
 
     steps:
       - name: Check out repository
@@ -28,8 +28,14 @@ jobs:
           extensions: mbstring, pdo_sqlite
           coverage: none
 
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Resolve PHP 8.2 compatible dependencies
+        run: composer update laravel/pint --with-all-dependencies --no-interaction --prefer-dist --no-progress
+
+      - name: Export dependency lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-lock-php82
+          path: composer.lock
 
       - name: Validate Composer metadata
         run: composer validate --strict

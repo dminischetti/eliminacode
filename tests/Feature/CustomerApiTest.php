@@ -141,7 +141,7 @@ class CustomerApiTest extends TestCase
 
         $this->assertNotNull($clientCookie);
 
-        for ($i = 1; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $this->withUnencryptedCookie('coda_cid', $clientCookie)
                 ->withHeader('Idempotency-Key', $this->key())
                 ->postJson('/api/tickets')
