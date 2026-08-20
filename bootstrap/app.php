@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The browser id is random, contains no personal data and is only a
+        // rate-limit key. Keeping it plaintext makes its lifecycle explicit.
+        $middleware->encryptCookies(except: [
+            AttachClientId::COOKIE,
+        ]);
+
         // Resolve the browser identifier after Laravel decrypts cookies and
         // before route-level throttling chooses its rate-limit key.
         $middleware->web(append: [
