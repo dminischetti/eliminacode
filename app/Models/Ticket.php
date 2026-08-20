@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Ticket extends Model
 {
     public const STATE_WAITING = 'waiting';
+
     public const STATE_CALLED = 'called';
+
     public const STATE_PASSED = 'passed';
 
     protected $fillable = [
@@ -51,5 +53,4 @@ class Ticket extends Model
     {
         return max(0, $this->number - $currentNumber - 1);
     }
-
 }

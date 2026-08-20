@@ -15,8 +15,7 @@ class TicketController extends Controller
     public function __construct(
         private readonly TicketService $tickets,
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     /**
      * §24 - La Idempotency-Key arriva dal browser ed e' l'unica cosa che

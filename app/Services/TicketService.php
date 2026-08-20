@@ -11,8 +11,7 @@ class TicketService
 {
     public function __construct(
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     /**
      * §24 - Emissione atomica.

@@ -48,8 +48,7 @@ class QueueService
         int $newCurrentNumber,
         int $expectedCurrentNumber,
         ?int $staffUserId = null,
-    ): QueueDay
-    {
+    ): QueueDay {
         return DB::transaction(function () use ($day, $newCurrentNumber, $expectedCurrentNumber, $staffUserId) {
             /** @var QueueDay $locked */
             $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();

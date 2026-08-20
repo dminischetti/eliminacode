@@ -20,7 +20,9 @@ class QueueCoreTest extends TestCase
     use RefreshDatabase;
 
     private QueueDayService $days;
+
     private TicketService $tickets;
+
     private QueueService $queue;
 
     protected function setUp(): void

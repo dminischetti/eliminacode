@@ -15,8 +15,7 @@ class StaffQueueController extends Controller
     public function __construct(
         private readonly QueueDayService $queueDays,
         private readonly QueueService $queue,
-    ) {
-    }
+    ) {}
 
     public function show(): JsonResponse
     {

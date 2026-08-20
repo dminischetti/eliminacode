@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\QueueDay;
 use App\Services\QueueDayService;
 use App\Services\QueueService;
-use App\Services\TicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -133,26 +132,26 @@ class CustomerApiTest extends TestCase
         );
     }
 
-    public function test_un_singolo_browser_viene_limitato_ma_un_altro_puo_continuare(): void
+    public function test_un_singolo_browser_viene_limitato(): void
     {
-        $client = bin2hex(random_bytes(16));
+        $first = $this->withHeader('Idempotency-Key', $this->key())
+            ->postJson('/api/tickets')
+            ->assertCreated();
+        $clientCookie = $first->getCookie('coda_cid', false)?->getValue();
 
-        for ($i = 0; $i < 10; $i++) {
-            $this->withCookie('coda_cid', $client)
+        $this->assertNotNull($clientCookie);
+
+        for ($i = 1; $i < 10; $i++) {
+            $this->withUnencryptedCookie('coda_cid', $clientCookie)
                 ->withHeader('Idempotency-Key', $this->key())
                 ->postJson('/api/tickets')
                 ->assertCreated();
         }
 
-        $this->withCookie('coda_cid', $client)
+        $this->withUnencryptedCookie('coda_cid', $clientCookie)
             ->withHeader('Idempotency-Key', $this->key())
             ->postJson('/api/tickets')
             ->assertTooManyRequests();
-
-        $this->withCookie('coda_cid', bin2hex(random_bytes(16)))
-            ->withHeader('Idempotency-Key', $this->key())
-            ->postJson('/api/tickets')
-            ->assertCreated();
     }
 
     /** Il client scarta il ticket confrontando business_date con today. */

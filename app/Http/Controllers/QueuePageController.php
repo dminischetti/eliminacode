@@ -9,8 +9,7 @@ class QueuePageController extends Controller
 {
     public function __construct(
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     /**
      * Unica pagina del cliente. Rende lo stato iniziale server-side cosi'

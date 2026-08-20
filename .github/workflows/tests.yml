@@ -37,19 +37,8 @@ jobs:
       - name: Audit Composer dependencies
         run: composer audit
 
-      - name: Format PHP source for verification
-        run: |
-          vendor/bin/pint
-          git diff --binary > pint.patch
-
-      - name: Export dependency lock and formatting
-        if: matrix.php == '8.3'
-        uses: actions/upload-artifact@v4
-        with:
-          name: prepared-source
-          path: |
-            composer.lock
-            pint.patch
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
 
       - name: Check JavaScript syntax
         run: |

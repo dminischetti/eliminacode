@@ -16,8 +16,7 @@ class QueueController extends Controller
 {
     public function __construct(
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     public function show(): JsonResponse
     {
