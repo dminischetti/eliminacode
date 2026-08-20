@@ -148,18 +148,21 @@ class CustomerApiTest extends TestCase
         $clientCookie = $first->getCookie('coda_cid', false)?->getValue();
 
         $this->assertNotNull($clientCookie);
+        $remaining = [$first->headers->get('X-RateLimit-Remaining')];
 
         for ($i = 0; $i < 10; $i++) {
-            $this->withUnencryptedCookie('coda_cid', $clientCookie)
+            $response = $this->withUnencryptedCookie('coda_cid', $clientCookie)
                 ->withHeader('Idempotency-Key', $this->key())
                 ->postJson('/api/tickets')
                 ->assertCreated();
+            $remaining[] = $response->headers->get('X-RateLimit-Remaining');
         }
 
-        $this->withUnencryptedCookie('coda_cid', $clientCookie)
+        $response = $this->withUnencryptedCookie('coda_cid', $clientCookie)
             ->withHeader('Idempotency-Key', $this->key())
-            ->postJson('/api/tickets')
-            ->assertTooManyRequests();
+            ->postJson('/api/tickets');
+
+        $this->assertSame(429, $response->status(), json_encode($remaining));
     }
 
     /** Il client scarta il ticket confrontando business_date con today. */
