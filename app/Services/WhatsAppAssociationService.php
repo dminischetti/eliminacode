@@ -61,7 +61,7 @@ class WhatsAppAssociationService
      */
     public function associateInbound(string $sender, string $body): ?Ticket
     {
-        if (! preg_match('/\bCODA-([A-Za-z0-9_-]{32})\b/', $body, $matches)) {
+        if (! preg_match('/\bCODA-([A-Za-z0-9_-]{32})(?![A-Za-z0-9_-])/', $body, $matches)) {
             return null;
         }
 

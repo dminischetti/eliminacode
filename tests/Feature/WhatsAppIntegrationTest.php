@@ -79,6 +79,23 @@ class WhatsAppIntegrationTest extends TestCase
             ->assertJsonMissing(['whatsapp_recipient' => '393401112233']);
     }
 
+    public function test_un_token_url_safe_che_termina_con_underscore_viene_associato(): void
+    {
+        $ticket = $this->issue();
+        $token = str_repeat('A', 31).'_';
+
+        $ticket->forceFill([
+            'whatsapp_association_token_hash' => hash('sha256', $token),
+            'whatsapp_association_expires_at' => now()->addMinutes(10),
+        ])->save();
+
+        $payload = $this->inboundPayload('wamid.trailing-underscore', '393401112233', "CODA-{$token}");
+
+        $this->postSignedWebhook($payload)->assertOk();
+
+        $this->assertTrue($ticket->fresh()->whatsappEnabled());
+    }
+
     public function test_messaggi_liberi_e_firme_non_valide_non_associano_nulla(): void
     {
         $ticket = $this->issue();
