@@ -32,5 +32,14 @@ class QueueRateLimiterProvider extends ServiceProvider
                 Limit::perMinute(120)->by('coda:shop'),
             ];
         });
+
+        RateLimiter::for('whatsapp-links', function (Request $request) {
+            $client = $request->cookie(AttachClientId::COOKIE) ?: $request->ip();
+
+            return [
+                Limit::perMinute(10)->by('coda:whatsapp-client:'.$client),
+                Limit::perMinute(120)->by('coda:whatsapp-shop'),
+            ];
+        });
     }
 }

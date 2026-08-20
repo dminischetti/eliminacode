@@ -3,9 +3,11 @@
 use App\Http\Controllers\Api\QueueController;
 use App\Http\Controllers\Api\StaffQueueController;
 use App\Http\Controllers\Api\TicketController;
+use App\Http\Controllers\Api\TicketWhatsAppController;
 use App\Http\Controllers\QueuePageController;
 use App\Http\Controllers\StaffPageController;
 use App\Http\Controllers\StaffSessionController;
+use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +42,20 @@ Route::post('/api/tickets', [TicketController::class, 'store'])
 Route::get('/api/tickets/{token}/status', [TicketController::class, 'status'])
     ->withoutMiddleware($statelessCustomerMiddleware)
     ->name('tickets.status');
+
+Route::post('/api/tickets/{token}/whatsapp-link', [TicketWhatsAppController::class, 'store'])
+    ->middleware('throttle:whatsapp-links')
+    ->withoutMiddleware($statelessCustomerMiddleware)
+    ->name('tickets.whatsapp-link');
+
+/* Meta verifica il callback con GET e consegna messaggi/stati con POST. */
+Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])
+    ->withoutMiddleware($statelessCustomerMiddleware)
+    ->name('whatsapp.webhook.verify');
+
+Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'receive'])
+    ->withoutMiddleware($statelessCustomerMiddleware)
+    ->name('whatsapp.webhook.receive');
 
 /*
  |--------------------------------------------------------------------------

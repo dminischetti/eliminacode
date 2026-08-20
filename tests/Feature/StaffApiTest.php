@@ -44,6 +44,8 @@ class StaffApiTest extends TestCase
         $this->actingAs($this->staff)
             ->get('/staff')
             ->assertOk()
+            ->assertSee('La Baita della Sceriffa')
+            ->assertSee('Banco carni')
             ->assertSee('Ora serviamo');
 
         $this->actingAs($this->staff)

@@ -19,7 +19,14 @@ class CheckProductionReadiness extends Command
         $checks = [
             'APP_KEY configurata' => fn (): bool => filled(config('app.key')),
             'Database raggiungibile' => fn (): bool => DB::connection()->getPdo() !== null,
-            'Migrazioni applicate' => fn (): bool => collect(['users', 'queue_days', 'tickets', 'queue_corrections'])
+            'Migrazioni applicate' => fn (): bool => collect([
+                'users',
+                'queue_days',
+                'tickets',
+                'queue_corrections',
+                'whatsapp_messages',
+                'whatsapp_webhook_events',
+            ])
                 ->every(fn (string $table): bool => Schema::hasTable($table)),
             'Account staff presente' => fn (): bool => Schema::hasTable('users') && User::query()->exists(),
             'storage scrivibile' => fn (): bool => is_writable(storage_path()),
@@ -39,6 +46,17 @@ class CheckProductionReadiness extends Command
             $checks += [
                 'SQLite busy timeout configurato' => fn (): bool => (int) config('database.connections.sqlite.busy_timeout') > 0,
                 'SQLite transaction mode IMMEDIATE' => fn (): bool => strtoupper((string) config('database.connections.sqlite.transaction_mode')) === 'IMMEDIATE',
+            ];
+        }
+
+        if (config('whatsapp.enabled')) {
+            $checks += [
+                'WhatsApp numero business configurato' => fn (): bool => preg_match('/^[0-9]{5,20}$/', (string) config('whatsapp.business_number')) === 1,
+                'WhatsApp Phone Number ID configurato' => fn (): bool => filled(config('whatsapp.phone_number_id')),
+                'WhatsApp access token configurato' => fn (): bool => filled(config('whatsapp.access_token')),
+                'WhatsApp app secret configurato' => fn (): bool => filled(config('whatsapp.app_secret')),
+                'WhatsApp verify token configurato' => fn (): bool => filled(config('whatsapp.verify_token')),
+                'Worker asincrono configurato' => fn (): bool => config('queue.default') !== 'sync',
             ];
         }
 

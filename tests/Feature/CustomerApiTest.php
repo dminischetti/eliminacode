@@ -35,7 +35,11 @@ class CustomerApiTest extends TestCase
 
     public function test_la_homepage_apre_la_giornata_e_mostra_il_numero_servito(): void
     {
-        $this->get('/')->assertOk()->assertSee('Ora serviamo');
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('La Baita della Sceriffa')
+            ->assertSee('Rigopiano · Gran Sasso')
+            ->assertSee('Ora serviamo');
 
         $this->assertSame(1, QueueDay::count());
     }
@@ -48,6 +52,7 @@ class CustomerApiTest extends TestCase
             ->assertJsonPath('ticket_number', 1)
             ->assertJsonPath('ticket_state', 'waiting')
             ->assertJsonPath('remaining', 0)
+            ->assertJsonPath('whatsapp.status', 'unavailable')
             ->assertJsonStructure(['public_token', 'today', 'business_date', 'queue_status']);
     }
 

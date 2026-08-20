@@ -78,7 +78,8 @@
     function disegna() {
         var chiusa = stato.queue_status === 'closed';
 
-        elIntestazione.textContent = 'Banco · ' + esc(stato.business_date || '');
+        elIntestazione.textContent = (stato.venue_name || 'La Baita della Sceriffa') +
+            ' · Banco carni · ' + (stato.business_date || '');
 
         if (chiusa) {
             elCorpo.innerHTML =
@@ -134,6 +135,14 @@
         if (messaggio) {
             return '<p class="avviso' + (messaggio.allarme ? ' avviso--allarme' : '') + '">' +
                    esc(messaggio.testo) + '</p>';
+        }
+        if (stato.whatsapp_failed_count > 0) {
+            return '<p class="avviso avviso--whatsapp">' +
+                   esc(stato.whatsapp_failed_count) +
+                   (stato.whatsapp_failed_count === 1
+                       ? ' avviso WhatsApp da verificare. '
+                       : ' avvisi WhatsApp da verificare. ') +
+                   'La coda continua a funzionare.</p>';
         }
         return '';
     }
@@ -277,7 +286,9 @@
             current_number: dati.current_number,
             last_issued_number: dati.last_issued_number,
             has_waiting: dati.has_waiting,
-            poll_seconds: stato.poll_seconds
+            whatsapp_failed_count: dati.whatsapp_failed_count || 0,
+            poll_seconds: stato.poll_seconds,
+            venue_name: stato.venue_name
         };
     }
 

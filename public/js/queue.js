@@ -45,6 +45,7 @@
     var timer = null;
     var lastSync = null;
     var sending = false;
+    var whatsappSending = false;
     var syncing = false;
     var retryDelay = 2000;
 
@@ -68,6 +69,13 @@
     function esc(value) {
         return String(value === undefined || value === null ? '' : value)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function marchio() {
+        return '<header class="marchio">' +
+            '<p class="marchio__nome">' + esc(boot.venue_name) + '</p>' +
+            '<p class="marchio__luogo">' + esc(boot.venue_location) + '</p>' +
+        '</header>';
     }
 
     function richiesta(url, options) {
@@ -106,27 +114,53 @@
 
     function view(html, modifier) {
         app.className = 'screen' + (modifier ? ' ' + modifier : '');
-        app.innerHTML = html;
+        app.innerHTML = marchio() + html;
 
-        var button = app.querySelector('[data-azione]');
-        if (button) {
+        var buttons = app.querySelectorAll('[data-azione]');
+        Array.prototype.forEach.call(buttons, function (button) {
             button.addEventListener('click', function () {
+                if (button.getAttribute('data-azione') === 'whatsapp') {
+                    attivaWhatsapp(button);
+                    return;
+                }
+
                 button.disabled = true;          /* solo UX: la sicurezza sta nella key */
                 nuovaIntenzione();
             });
-        }
+        });
     }
 
     function piede() {
-        if (!lastSync) { return '<p class="piede"></p>'; }
+        if (!lastSync) { return '<div class="piede">' + privacy() + '</div>'; }
 
         var vecchio = (Date.now() - lastSync.getTime()) > (pollMs * 4);
         var ora = lastSync.toTimeString().slice(0, 5);
 
-        return '<p class="piede' + (vecchio ? ' piede--vecchio' : '') + '">' +
-               (vecchio ? 'Non aggiornato dalle ' + ora + '. Controlla la connessione.'
-                        : 'Ultimo aggiornamento ' + ora) +
-               '</p>';
+        return '<div class="piede' + (vecchio ? ' piede--vecchio' : '') + '">' +
+               '<p>' + (vecchio ? 'Non aggiornato dalle ' + ora + '. Controlla la connessione.'
+                                : 'Ultimo aggiornamento ' + ora) + '</p>' +
+               privacy() +
+               '</div>';
+    }
+
+    function privacy() {
+        return '<details class="privacy">' +
+            '<summary>Privacy</summary>' +
+            '<p>Nessun account richiesto. L\'avviso e\' facoltativo: il tuo identificativo WhatsApp viene usato solo per questo turno, mai per marketing, e viene eliminato automaticamente.</p>' +
+        '</details>';
+    }
+
+    function whatsapp(d) {
+        if (!d.whatsapp || d.whatsapp.status === 'unavailable') { return ''; }
+
+        if (d.whatsapp.status === 'active') {
+            return '<div class="whatsapp-stato" role="status">Avviso WhatsApp attivo</div>' +
+                '<p class="consenso">Riceverai un solo messaggio quando il turno si avvicina.</p>';
+        }
+
+        return '<button class="azione azione--whatsapp" data-azione="whatsapp">AVVISAMI SU WHATSAPP</button>' +
+            '<p class="consenso">Riceverai solo messaggi relativi a questo turno.</p>' +
+            '<p class="esito" data-whatsapp-esito aria-live="polite"></p>';
     }
 
     function schermoHome(d) {
@@ -134,8 +168,9 @@
             '<div class="screen__body">' +
                 '<p class="eyebrow">Ora serviamo</p>' +
                 '<p class="numero">' + esc(d.current_number) + '</p>' +
+                '<p class="nota">Prendi il numero e tieni aperta questa pagina. Si aggiorna da sola.</p>' +
             '</div>' +
-            '<button class="azione" data-azione="nuovo">PRENDI UN NUMERO</button>' +
+            '<button class="azione" data-azione="nuovo">PRENDI IL NUMERO</button>' +
             piede()
         );
     }
@@ -151,7 +186,9 @@
                 '<p class="numero">' + esc(d.ticket_number) + '</p>' +
                 '<p class="riga">Stiamo servendo il ' + esc(d.current_number) + '</p>' +
                 '<p class="riga riga--forte">' + mancano + '</p>' +
+                '<p class="nota">Puoi aspettare dove preferisci. Tieni aperta questa pagina.</p>' +
             '</div>' +
+            whatsapp(d) +
             piede()
         );
     }
@@ -161,7 +198,7 @@
             '<div class="screen__body">' +
                 '<p class="eyebrow">Tocca a te</p>' +
                 '<p class="numero pulsa">' + esc(d.ticket_number) + '</p>' +
-                '<p class="riga riga--forte">Vai al banco.</p>' +
+                '<p class="riga riga--forte">Vai al banco carni.</p>' +
             '</div>' +
             piede(),
             'screen--turno'
@@ -175,7 +212,7 @@
                 '<p class="numero numero--piccolo">' + esc(d.ticket_number) + '</p>' +
                 '<p class="riga">Rivolgiti al personale al banco.</p>' +
             '</div>' +
-            '<button class="azione" data-azione="nuovo">PRENDI UN NUOVO NUMERO</button>' +
+            '<button class="azione" data-azione="nuovo">PRENDI UN ALTRO NUMERO</button>' +
             piede()
         );
     }
@@ -183,9 +220,10 @@
     function schermoChiuso() {
         view(
             '<div class="screen__body">' +
-                '<p class="eyebrow">Siamo chiusi</p>' +
-                '<p class="riga">La coda di oggi e\' terminata.</p>' +
-            '</div>'
+                '<p class="eyebrow">Distribuzione numeri chiusa</p>' +
+                '<p class="riga">Per informazioni, rivolgiti al personale della Baita.</p>' +
+            '</div>' +
+            piede()
         );
     }
 
@@ -283,10 +321,60 @@
         });
     }
 
+    function attivaWhatsapp(button) {
+        if (whatsappSending) { return; }
+
+        var token = store.getItem(K.token);
+        if (!token) { return; }
+
+        whatsappSending = true;
+        button.disabled = true;
+        var esito = app.querySelector('[data-whatsapp-esito]');
+        if (esito) { esito.textContent = 'Apro WhatsApp...'; }
+
+        richiesta('/api/tickets/' + encodeURIComponent(token) + '/whatsapp-link', {
+            method: 'POST',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (data) {
+                if (!r.ok) {
+                    var err = new Error(data.message || 'Non e\' stato possibile aprire WhatsApp.');
+                    err.messaggio = data.message;
+                    throw err;
+                }
+                return data;
+            });
+        }).then(function (data) {
+            whatsappSending = false;
+
+            if (data.status === 'active') {
+                aggiorna();
+                return;
+            }
+
+            if (data.url) {
+                window.location.assign(data.url);
+                return;
+            }
+
+            throw new Error('Link WhatsApp non disponibile.');
+        }).catch(function (err) {
+            whatsappSending = false;
+            button.disabled = false;
+            if (esito) {
+                esito.textContent = err.messaggio || err.message || 'Riprova tra poco.';
+            }
+        });
+    }
+
     /* ---------------------------------------------------------------- */
 
     function aggiorna() {
-        if (sending || syncing) { return; }
+        if (sending || whatsappSending || syncing) { return; }
 
         syncing = true;
 

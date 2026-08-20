@@ -11,6 +11,47 @@ class StaffSessionTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_lo_staff_puo_essere_creato_da_una_variabile_ambiente(): void
+    {
+        putenv('STAFF_TEST_PASSWORD=una-password-sicura');
+
+        try {
+            $this->artisan('coda:staff', [
+                'email' => 'banco@example.com',
+                '--name' => 'Banco carni',
+                '--password-env' => 'STAFF_TEST_PASSWORD',
+            ])->assertSuccessful();
+        } finally {
+            putenv('STAFF_TEST_PASSWORD');
+        }
+
+        $user = User::where('email', 'banco@example.com')->firstOrFail();
+
+        $this->assertSame('Banco carni', $user->name);
+        $this->assertTrue(Hash::check('una-password-sicura', $user->password));
+    }
+
+    public function test_la_creazione_non_interattiva_fallisce_se_la_password_manca(): void
+    {
+        putenv('STAFF_TEST_PASSWORD');
+
+        $this->artisan('coda:staff', [
+            'email' => 'banco@example.com',
+            '--password-env' => 'STAFF_TEST_PASSWORD',
+        ])->assertFailed();
+
+        $this->assertDatabaseMissing('users', ['email' => 'banco@example.com']);
+    }
+
+    public function test_la_pagina_di_accesso_mostra_lidentita_della_baita(): void
+    {
+        $this->get('/staff/login')
+            ->assertOk()
+            ->assertSee('La Baita della Sceriffa')
+            ->assertSee('Banco carni')
+            ->assertSee('Rigopiano · Gran Sasso');
+    }
+
     public function test_lo_staff_puo_accedere_e_uscire(): void
     {
         $user = User::factory()->create(['password' => Hash::make('password-sicura')]);

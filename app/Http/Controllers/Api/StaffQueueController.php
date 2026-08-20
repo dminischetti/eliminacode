@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\QueueException;
 use App\Http\Controllers\Controller;
 use App\Models\QueueDay;
+use App\Models\WhatsAppMessage;
 use App\Services\QueueDayService;
 use App\Services\QueueService;
 use Illuminate\Http\JsonResponse;
@@ -103,6 +104,9 @@ class StaffQueueController extends Controller
             'current_number' => $day->current_number,
             'last_issued_number' => $day->last_issued_number,
             'has_waiting' => $day->hasWaitingNumbers(),
+            'whatsapp_failed_count' => config('whatsapp.enabled')
+                ? WhatsAppMessage::issueCountForQueueDay($day->id)
+                : 0,
         ];
     }
 }

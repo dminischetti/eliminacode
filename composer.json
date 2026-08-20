@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "dminischetti/eliminacode",
     "type": "project",
-    "description": "Sistema elimina-code web per una piccola attività commerciale.",
+    "description": "Sistema elimina-code web per il banco della Baita della Sceriffa.",
     "keywords": ["laravel", "queue", "ticketing"],
     "license": "MIT",
     "require": {

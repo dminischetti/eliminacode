@@ -5,9 +5,15 @@ namespace App\Services;
 use App\Exceptions\QueueException;
 use App\Models\QueueDay;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class QueueService
 {
+    public function __construct(
+        private readonly WhatsAppNotificationService $whatsapp,
+    ) {}
+
     /**
      * §41 - PROSSIMO.
      *
@@ -18,7 +24,7 @@ class QueueService
      */
     public function next(QueueDay $day, int $expectedCurrentNumber): QueueDay
     {
-        return DB::transaction(function () use ($day, $expectedCurrentNumber) {
+        $advanced = DB::transaction(function () use ($day, $expectedCurrentNumber) {
             $affected = DB::table('queue_days')
                 ->where('id', $day->id)
                 ->where('status', QueueDay::STATUS_OPEN)
@@ -35,6 +41,21 @@ class QueueService
 
             return QueueDay::whereKey($day->id)->firstOrFail();
         });
+
+        // Qualunque guasto dell'integrazione opzionale resta fuori dalla
+        // transazione che ha gia' avanzato la coda.
+        try {
+            $messageIds = $this->whatsapp->scheduleEligible($advanced);
+            $this->whatsapp->dispatch($messageIds);
+        } catch (Throwable $e) {
+            Log::error('Pianificazione WhatsApp non completata; la coda e\' avanzata.', [
+                'queue_day_id' => $advanced->id,
+                'current_number' => $advanced->current_number,
+                'exception' => $e::class,
+            ]);
+        }
+
+        return $advanced;
     }
 
     /**

@@ -28,6 +28,8 @@ class QueuePageController extends Controller
                 'queue_status' => $day->status,
                 'current_number' => $day->current_number,
                 'poll_seconds' => (int) config('queue_shop.customer_poll_seconds'),
+                'venue_name' => (string) config('app.name'),
+                'venue_location' => (string) config('queue_shop.location'),
             ],
         ]);
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
@@ -18,20 +19,41 @@ class Ticket extends Model
         'number',
         'public_token',
         'idempotency_key',
+        'whatsapp_association_token_hash',
+        'whatsapp_recipient',
+        'whatsapp_association_expires_at',
+        'whatsapp_enabled_at',
+        'whatsapp_identifier_purged_at',
     ];
 
     /** §31 - non devono mai finire in una risposta API. */
     protected $hidden = [
         'idempotency_key',
+        'whatsapp_association_token_hash',
+        'whatsapp_recipient',
     ];
 
     protected $casts = [
         'number' => 'integer',
+        'whatsapp_recipient' => 'encrypted',
+        'whatsapp_association_expires_at' => 'datetime',
+        'whatsapp_enabled_at' => 'datetime',
+        'whatsapp_identifier_purged_at' => 'datetime',
     ];
 
     public function queueDay(): BelongsTo
     {
         return $this->belongsTo(QueueDay::class);
+    }
+
+    public function whatsappMessages(): HasMany
+    {
+        return $this->hasMany(WhatsAppMessage::class);
+    }
+
+    public function whatsappEnabled(): bool
+    {
+        return $this->whatsapp_enabled_at !== null && filled($this->whatsapp_recipient);
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Services\QueueDayService;
 use App\Services\TicketService;
+use App\Services\WhatsAppAssociationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ class TicketController extends Controller
     public function __construct(
         private readonly TicketService $tickets,
         private readonly QueueDayService $queueDays,
+        private readonly WhatsAppAssociationService $whatsapp,
     ) {}
 
     /**
@@ -76,6 +78,14 @@ class TicketController extends Controller
             'ticket_number' => $ticket->number,
             'ticket_state' => $ticket->state($day->current_number),
             'remaining' => $ticket->remaining($day->current_number),
+            'whatsapp' => [
+                'available' => $this->whatsapp->isAvailable(),
+                'status' => match (true) {
+                    $ticket->whatsappEnabled() => 'active',
+                    $this->whatsapp->isAvailable() => 'inactive',
+                    default => 'unavailable',
+                },
+            ],
         ];
     }
 }
