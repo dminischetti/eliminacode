@@ -30,14 +30,16 @@ class AttachClientId
         $id = bin2hex(random_bytes(16));
         $request->cookies->set(self::COOKIE, $id);
 
+        $secure = config('session.secure');
+
         return $next($request)->withCookie(
             cookie(
                 name: self::COOKIE,
                 value: $id,
                 minutes: 60 * 24 * 365,
-                secure: $request->isSecure(),
+                secure: is_bool($secure) ? $secure : $request->isSecure(),
                 httpOnly: true,
-                sameSite: 'Lax',
+                sameSite: (string) config('session.same_site', 'lax'),
             )
         );
     }

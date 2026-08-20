@@ -15,8 +15,7 @@ class TicketController extends Controller
     public function __construct(
         private readonly TicketService $tickets,
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     /**
      * §24 - La Idempotency-Key arriva dal browser ed e' l'unica cosa che
@@ -36,12 +35,12 @@ class TicketController extends Controller
         try {
             $ticket = $this->tickets->issue($key);
         } catch (QueueException $e) {
-            return response()->json(['message' => $e->getMessage()], 409);
+            return response()->json(['message' => $e->getMessage()], $e->httpStatus());
         }
 
         return response()->json(
             $this->payload($ticket) + ['public_token' => $ticket->public_token],
-            201
+            $ticket->wasRecentlyCreated ? 201 : 200
         );
     }
 
@@ -77,8 +76,6 @@ class TicketController extends Controller
             'ticket_number' => $ticket->number,
             'ticket_state' => $ticket->state($day->current_number),
             'remaining' => $ticket->remaining($day->current_number),
-            'whatsapp_enabled' => (bool) config('queue_shop.whatsapp_enabled'),
-            'whatsapp_associated' => $ticket->hasWhatsAppAssociation(),
         ];
     }
 }

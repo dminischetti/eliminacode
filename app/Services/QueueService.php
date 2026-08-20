@@ -8,11 +8,6 @@ use Illuminate\Support\Facades\DB;
 
 class QueueService
 {
-    public function __construct(
-        private readonly NotificationService $notifications,
-    ) {
-    }
-
     /**
      * §41 - PROSSIMO.
      *
@@ -38,13 +33,7 @@ class QueueService
                 throw $this->explainFailedAdvance($day->id);
             }
 
-            $fresh = QueueDay::whereKey($day->id)->firstOrFail();
-
-            // §47 - unico punto di valutazione dell'eleggibilita' WhatsApp.
-            // In Fase 1 non fa nulla. Nessuna chiamata di rete qui dentro.
-            $this->notifications->evaluate($fresh);
-
-            return $fresh;
+            return QueueDay::whereKey($day->id)->firstOrFail();
         });
     }
 
@@ -52,14 +41,25 @@ class QueueService
      * §44-§46 - CORREGGI NUMERO.
      *
      * L'unica funzione straordinaria della V1. Sempre entro i limiti,
-     * sempre tracciata, sempre seguita dalla rivalutazione delle notifiche
-     * (una correzione in avanti puo' far entrare dei ticket in soglia, §48).
+     * applicata solo allo stato che lo staff aveva davanti e sempre tracciata.
      */
-    public function correct(QueueDay $day, int $newCurrentNumber, ?int $staffUserId = null): QueueDay
-    {
-        return DB::transaction(function () use ($day, $newCurrentNumber, $staffUserId) {
+    public function correct(
+        QueueDay $day,
+        int $newCurrentNumber,
+        int $expectedCurrentNumber,
+        ?int $staffUserId = null,
+    ): QueueDay {
+        return DB::transaction(function () use ($day, $newCurrentNumber, $expectedCurrentNumber, $staffUserId) {
             /** @var QueueDay $locked */
             $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();
+
+            if (! $locked->isOpen()) {
+                throw QueueException::closed();
+            }
+
+            if ($locked->current_number !== $expectedCurrentNumber) {
+                throw QueueException::staleState();
+            }
 
             if ($newCurrentNumber < 0 || $newCurrentNumber > $locked->last_issued_number) {
                 throw QueueException::correctionOutOfRange($newCurrentNumber, $locked->last_issued_number);
@@ -81,8 +81,6 @@ class QueueService
                 'new_current_number' => $newCurrentNumber,
                 'created_at' => now(),
             ]);
-
-            $this->notifications->evaluate($locked);
 
             return $locked;
         });

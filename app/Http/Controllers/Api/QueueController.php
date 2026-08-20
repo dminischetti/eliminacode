@@ -16,8 +16,7 @@ class QueueController extends Controller
 {
     public function __construct(
         private readonly QueueDayService $queueDays,
-    ) {
-    }
+    ) {}
 
     public function show(): JsonResponse
     {
@@ -28,7 +27,6 @@ class QueueController extends Controller
             'business_date' => $day->businessDateString(),
             'queue_status' => $day->status,
             'current_number' => $day->current_number,
-            'whatsapp_enabled' => (bool) config('queue_shop.whatsapp_enabled'),
         ]);
     }
 }

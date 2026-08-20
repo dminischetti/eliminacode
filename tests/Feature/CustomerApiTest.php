@@ -2,17 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\AttachClientId;
 use App\Models\QueueDay;
 use App\Services\QueueDayService;
 use App\Services\QueueService;
-use App\Services\TicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CustomerApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::flush();
+    }
 
     private function key(): string
     {
@@ -52,6 +60,22 @@ class CustomerApiTest extends TestCase
 
         $this->assertSame($first['public_token'], $second['public_token']);
         $this->assertSame(1, app(QueueDayService::class)->today()->last_issued_number);
+    }
+
+    public function test_un_retry_dopo_la_chiusura_restituisce_il_ticket_originale(): void
+    {
+        $key = $this->key();
+        $first = $this->prendiNumero($key)->assertCreated();
+
+        $days = app(QueueDayService::class);
+        $days->close($days->today());
+
+        $this->prendiNumero($key)
+            ->assertOk()
+            ->assertJsonPath('public_token', $first->json('public_token'));
+
+        $this->prendiNumero()->assertStatus(409);
+        $this->assertSame(1, $days->today()->last_issued_number);
     }
 
     public function test_senza_idempotency_key_valida_non_si_emette_nulla(): void
@@ -98,6 +122,41 @@ class CustomerApiTest extends TestCase
     public function test_token_inesistente_restituisce_404(): void
     {
         $this->getJson('/api/tickets/inesistente/status')->assertNotFound();
+    }
+
+    public function test_le_rotte_cliente_non_avviano_una_sessione_e_includono_header_sicuri(): void
+    {
+        $response = $this->get('/')->assertOk();
+
+        $response->assertCookie('coda_cid')
+            ->assertCookieMissing((string) config('session.cookie'))
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'same-origin');
+
+        $this->assertStringContainsString(
+            "frame-ancestors 'none'",
+            (string) $response->headers->get('Content-Security-Policy')
+        );
+    }
+
+    public function test_un_singolo_browser_viene_limitato(): void
+    {
+        // Senza il middleware identificativo, il limiter usa il fallback IP.
+        // Questo rende deterministico il test dell'integrazione HTTP; gli altri
+        // test verificano separatamente emissione e isolamento dei browser id.
+        $this->withoutMiddleware(AttachClientId::class);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->withHeader('Idempotency-Key', $this->key())
+                ->postJson('/api/tickets')
+                ->assertCreated();
+        }
+
+        $this->withHeader('Idempotency-Key', $this->key())
+            ->postJson('/api/tickets')
+            ->assertTooManyRequests();
     }
 
     /** Il client scarta il ticket confrontando business_date con today. */

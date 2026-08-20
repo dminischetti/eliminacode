@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\QueueDay;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class QueueDayService
 {
@@ -28,7 +29,7 @@ class QueueDayService
     {
         $date = $this->businessDate();
 
-        if ($day = QueueDay::where('business_date', $date)->first()) {
+        if ($day = QueueDay::whereDate('business_date', $date)->first()) {
             return $day;
         }
 
@@ -44,7 +45,7 @@ class QueueDayService
         } catch (QueryException $e) {
             // §10 - un'altra richiesta ha creato la giornata un istante prima.
             // Il perdente non deve mai restituire un errore al cliente.
-            if ($day = QueueDay::where('business_date', $date)->first()) {
+            if ($day = QueueDay::whereDate('business_date', $date)->first()) {
                 return $day;
             }
 
@@ -55,12 +56,18 @@ class QueueDayService
     /** §12 */
     public function close(QueueDay $day): QueueDay
     {
-        $day->forceFill([
-            'status' => QueueDay::STATUS_CLOSED,
-            'closed_at' => now(),
-        ])->save();
+        return DB::transaction(function () use ($day) {
+            $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();
 
-        return $day;
+            if ($locked->isOpen()) {
+                $locked->forceFill([
+                    'status' => QueueDay::STATUS_CLOSED,
+                    'closed_at' => now(),
+                ])->save();
+            }
+
+            return $locked;
+        });
     }
 
     /**
@@ -69,11 +76,17 @@ class QueueDayService
      */
     public function reopen(QueueDay $day): QueueDay
     {
-        $day->forceFill([
-            'status' => QueueDay::STATUS_OPEN,
-            'closed_at' => null,
-        ])->save();
+        return DB::transaction(function () use ($day) {
+            $locked = QueueDay::whereKey($day->id)->lockForUpdate()->firstOrFail();
 
-        return $day;
+            if (! $locked->isOpen()) {
+                $locked->forceFill([
+                    'status' => QueueDay::STATUS_OPEN,
+                    'closed_at' => null,
+                ])->save();
+            }
+
+            return $locked;
+        });
     }
 }
