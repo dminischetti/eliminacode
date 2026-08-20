@@ -26,5 +26,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Prepare test environment
+        run: cp .env.example .env
+
       - name: Run test suite
         run: php artisan test --display-warnings
