@@ -28,7 +28,7 @@ class QueueDayService
     {
         $date = $this->businessDate();
 
-        if ($day = QueueDay::where('business_date', $date)->first()) {
+        if ($day = QueueDay::whereDate('business_date', $date)->first()) {
             return $day;
         }
 
@@ -44,7 +44,7 @@ class QueueDayService
         } catch (QueryException $e) {
             // §10 - un'altra richiesta ha creato la giornata un istante prima.
             // Il perdente non deve mai restituire un errore al cliente.
-            if ($day = QueueDay::where('business_date', $date)->first()) {
+            if ($day = QueueDay::whereDate('business_date', $date)->first()) {
                 return $day;
             }
 
