@@ -4,6 +4,7 @@ use App\Http\Middleware\AttachClientId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -17,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             AttachClientId::class,
         ]);
+        $middleware->prependToPriorityList(
+            before: ThrottleRequests::class,
+            prepend: AttachClientId::class,
+        );
 
         // The public ticket endpoint has no authenticated session to protect.
         // Idempotency and rate limiting provide its abuse safeguards.
